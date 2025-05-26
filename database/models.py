@@ -28,6 +28,10 @@ class User(Base):
     
     def __repr__(self):
         return f"<User(id='{self.id}', login='{self.login}', display_name='{self.display_name}')>"
+    
+    class Meta:
+        managed = False
+        db_table = 'users'
 
 class Game(Base):
     """
@@ -45,6 +49,10 @@ class Game(Base):
     
     def __repr__(self):
         return f"<Game(id='{self.id}', name='{self.name}')>"
+    
+    class Meta:
+        managed = False
+        db_table = 'games'
 
 class Stream(Base):
     """
@@ -54,7 +62,7 @@ class Stream(Base):
     
     id = Column(String, primary_key=True)  # Twitch stream ID
     user_id = Column(String, ForeignKey('users.id'), nullable=False)
-    game_id = Column(String, ForeignKey('games.id'))
+    game_id = Column(String, ForeignKey('games.id'), nullable=True)
     title = Column(String(500))
     viewer_count = Column(Integer, default=0)
     started_at = Column(DateTime)
@@ -69,6 +77,10 @@ class Stream(Base):
     
     def __repr__(self):
         return f"<Stream(id='{self.id}', title='{self.title}', viewer_count={self.viewer_count})>"
+    
+    class Meta:
+        managed = False
+        db_table = 'streams'
 
 class Video(Base):
     """
@@ -97,6 +109,10 @@ class Video(Base):
     
     def __repr__(self):
         return f"<Video(id='{self.id}', title='{self.title}', type='{self.type}')>"
+    
+    class Meta:
+        managed = False
+        db_table = 'videos'
 
 class Clip(Base):
     """
@@ -125,5 +141,11 @@ class Clip(Base):
     video = relationship("Video", back_populates="clips")
     game = relationship("Game", back_populates="clips")
     
+    
+    
     def __repr__(self):
         return f"<Clip(id='{self.id}', title='{self.title}', view_count={self.view_count})>" 
+    
+    class Meta:
+        managed = False
+        db_table = 'clips'

@@ -1,0 +1,77 @@
+{# reports/templates/reports/builder.html #}
+{% extends 'base.html' %}
+{% load report_extras %}
+
+{% block content %}
+  <h1>Relatórios Ad-Hoc</h1>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <h3>Escolha tabelas</h3>
+    {% for t in tables %}
+      <label>
+        <input type="checkbox"
+               name="tables"
+               value="{{ t.table }}">
+        {{ t.name }}
+      </label><br>
+    {% endfor %}
+
+    <h3>Escolha campos</h3>
+    <select name="fields" multiple size="10">
+      {% for t in tables %}
+        <optgroup label="{{ t.name }}">
+          {% for fld in t.model|get_model_fields %}
+            <option value="{{ t.table }}__{{ fld }}">{{ fld }}</option>
+          {% endfor %}
+        </optgroup>
+      {% endfor %}
+    </select>
+
+    <h3>Filtros</h3>
+    <div id="filters">
+      <div>
+        <select name="filters-field_0">
+          {% for t in tables %}
+            {% for fld in t.model|get_model_fields %}
+              <option value="{{ t.table }}__{{ fld }}">
+                {{ t.name }}.{{ fld }}
+              </option>
+            {% endfor %}
+          {% endfor %}
+        </select>
+        <select name="filters-op_0">
+          <option value="equals">=</option>
+          <option value="contains">Contém</option>
+          <!-- etc -->
+        </select>
+        <input name="filters-val_0">
+      </div>
+    </div>
+    <button type="button" onclick="addFilter()">+ filtro</button>
+    <button type="submit">Gerar relatório</button>
+  </form>
+
+  {% if results %}
+    <h3>Resultados</h3>
+    <table>
+      <thead>
+        <tr>
+          {% for col in results.0.keys %}
+            <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in results %}
+          <tr>
+            {% for val in row.values %}
+              <td>{{ val }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

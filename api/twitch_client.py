@@ -71,14 +71,12 @@ class TwitchAPIClient:
         return response.get('data', [])
     
     def get_games(self, game_ids: List[str] = None, names: List[str] = None) -> List[Dict]:
-        """
-        Buscar jogos específicos por ID ou nome
-        """
         params = {}
         if game_ids:
-            params.update({f'id': game_id for game_id in game_ids})
+            # monta ?id=123&id=456&id=789
+            params['id'] = game_ids
         if names:
-            params.update({f'name': name for name in names})
+            params['name'] = names
         
         response = self._make_request('games', params)
         return response.get('data', [])
@@ -103,19 +101,15 @@ class TwitchAPIClient:
         return response.get('data', [])
     
     def get_users(self, user_ids: List[str] = None, logins: List[str] = None) -> List[Dict]:
-        """
-        Buscar informações de usuários
-        """
         params = {}
         if user_ids:
-            for uid in user_ids:
-                params[f'id'] = uid
+            # envia todos os IDs de uma vez: requests monta ?id=1&id=2&...
+            params['id'] = user_ids
         if logins:
-            for login in logins:
-                params[f'login'] = login
-        
+            params['login'] = logins
         response = self._make_request('users', params)
         return response.get('data', [])
+
     
     def get_videos(self, user_id: str = None, game_id: str = None, 
                   video_ids: List[str] = None, first: int = 20) -> List[Dict]:

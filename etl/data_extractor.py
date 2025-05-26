@@ -249,17 +249,27 @@ class TwitchDataExtractor:
     
     def _transform_stream_data(self, data: Dict) -> Stream:
         """
-        Transformar dados de stream da API para modelo do banco
+        Transformar dados de stream da API para modelo do banco,
+        garantindo que game_id vazio seja inserido como NULL.
         """
+        # Se não vier game_id ou vier string vazia, salva None
+        game = data.get('game_id') or None
+
         return Stream(
             id=data['id'],
             user_id=data['user_id'],
-            game_id=data.get('game_id'),
+            game_id=game,
             title=data.get('title', ''),
             viewer_count=data.get('viewer_count', 0),
-            started_at=datetime.fromisoformat(data['started_at'].replace('Z', '+00:00')) if data.get('started_at') else None,
+            # Converte ISO8601 para datetime, ou deixa None se não informado
+            started_at=(
+                datetime.fromisoformat(data['started_at'].replace('Z', '+00:00'))
+                if data.get('started_at')
+                else None
+            ),
             language=data.get('language', ''),
             thumbnail_url=data.get('thumbnail_url', ''),
+            # Serializa a lista de tag_ids como JSON
             tag_ids=json.dumps(data.get('tag_ids', [])),
             is_mature=data.get('is_mature', False)
         )
