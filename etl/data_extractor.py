@@ -63,11 +63,24 @@ class TwitchDataExtractor:
         """
         Extrair e carregar streams ao vivo
         """
-        info(f"Iniciando extração de {limit} streams...")
+        # The 'limit' parameter from main_etl.py might be small (e.g., 100).
+        # To get over 2000 users, we need to fetch significantly more streams.
+        # Let's target fetching 1500 streams here.
+        target_streams_to_fetch = 1500
+        info(f"Iniciando extração de até {target_streams_to_fetch} streams (original limit: {limit})...")
         
         try:
-            # Buscar streams ao vivo
-            streams_data = self.client.get_streams(first=limit)
+            # Buscar streams ao vivo usando o método paginado
+            # O parâmetro 'first' dentro de 'params' para get_all_paginated define o tamanho de cada página.
+            streams_data = self.client.get_all_paginated(
+                endpoint='streams',
+                params={'first': 100}, # Fetch 100 items per API call page
+                max_items=target_streams_to_fetch
+            )
+            
+            if not streams_data:
+                info("Nenhuma stream retornada pela busca paginada.")
+                return 0
             
             # Extrair IDs únicos de usuários e jogos para buscar informações completas
             user_ids = list(set([stream['user_id'] for stream in streams_data]))
@@ -181,6 +194,13 @@ class TwitchDataExtractor:
             for clip_data in clips_data:
                 # Transformar e limpar dados
                 clip = self._transform_clip_data(clip_data)
+                
+                # Verificar se o vídeo associado existe, se não, define video_id como None
+                if clip.video_id:
+                    existing_video = self.db.query(Video).filter(Video.id == clip.video_id).first()
+                    if not existing_video:
+                        info(f"Vídeo {clip.video_id} não encontrado para o clip {clip.id}. Definindo video_id como None.")
+                        clip.video_id = None
                 
                 # Verificar se já existe
                 existing_clip = self.db.query(Clip).filter(Clip.id == clip.id).first()
@@ -299,14 +319,18 @@ class TwitchDataExtractor:
         """
         Transformar dados de clip da API para modelo do banco
         """
+        # Garante que IDs vazios sejam None
+        video_id = data.get('video_id') or None
+        game_id = data.get('game_id') or None
+
         return Clip(
             id=data['id'],
             url=data.get('url', ''),
             embed_url=data.get('embed_url', ''),
             broadcaster_id=data['broadcaster_id'],
             creator_id=data['creator_id'],
-            video_id=data.get('video_id'),
-            game_id=data.get('game_id'),
+            video_id=video_id,
+            game_id=game_id,
             language=data.get('language', ''),
             title=data.get('title', ''),
             view_count=data.get('view_count', 0),

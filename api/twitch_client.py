@@ -71,15 +71,27 @@ class TwitchAPIClient:
         return response.get('data', [])
     
     def get_games(self, game_ids: List[str] = None, names: List[str] = None) -> List[Dict]:
-        params = {}
+        all_games_data = []
+
+        def fetch_in_chunks(params_key: str, values: List[str]):
+            nonlocal all_games_data
+            chunk_size = 100  # Twitch API limit for ID-based lookups
+            for i in range(0, len(values), chunk_size):
+                chunk = values[i:i + chunk_size]
+                params = {params_key: chunk}
+                response = self._make_request('games', params)
+                all_games_data.extend(response.get('data', []))
+                time.sleep(0.1) # Be respectful to the API
+
         if game_ids:
-            # monta ?id=123&id=456&id=789
-            params['id'] = game_ids
-        if names:
-            params['name'] = names
+            fetch_in_chunks('id', game_ids)
         
-        response = self._make_request('games', params)
-        return response.get('data', [])
+        if names:
+            # Similar to get_users, if both are provided, names are fetched after IDs.
+            # Current ETL usage primarily uses game_ids.
+            fetch_in_chunks('name', names)
+            
+        return all_games_data
     
     def get_streams(self, game_id: str = None, user_id: List[str] = None, 
                    user_login: List[str] = None, first: int = 20) -> List[Dict]:
@@ -101,14 +113,30 @@ class TwitchAPIClient:
         return response.get('data', [])
     
     def get_users(self, user_ids: List[str] = None, logins: List[str] = None) -> List[Dict]:
-        params = {}
+        all_users_data = []
+        
+        def fetch_in_chunks(params_key: str, values: List[str]):
+            nonlocal all_users_data
+            # Process in chunks of 100, as per Twitch API limits for 'id' and 'login' params
+            chunk_size = 100 
+            for i in range(0, len(values), chunk_size):
+                chunk = values[i:i + chunk_size]
+                params = {params_key: chunk}
+                response = self._make_request('users', params)
+                all_users_data.extend(response.get('data', []))
+                # Small delay to be respectful to the API, though _make_request has rate limit handling
+                time.sleep(0.1) 
+
         if user_ids:
-            # envia todos os IDs de uma vez: requests monta ?id=1&id=2&...
-            params['id'] = user_ids
+            fetch_in_chunks('id', user_ids)
+        
         if logins:
-            params['login'] = logins
-        response = self._make_request('users', params)
-        return response.get('data', [])
+            # Note: If both user_ids and logins are provided, logins will be fetched *after* user_ids,
+            # potentially leading to duplicate user entries if not handled by the caller.
+            # For the current use case in data_extractor, only user_ids are used in the problematic call.
+            fetch_in_chunks('login', logins)
+            
+        return all_users_data
 
     
     def get_videos(self, user_id: str = None, game_id: str = None, 
@@ -153,28 +181,47 @@ class TwitchAPIClient:
         response = self._make_request('clips', params)
         return response.get('data', [])
     
-    def get_all_paginated(self, endpoint_method, **kwargs) -> List[Dict]:
+    def get_all_paginated(self, endpoint: str, params: Dict, max_items: int = 1000) -> List[Dict]:
         """
-        Buscar todos os dados paginados de um endpoint
+        Buscar todos os dados paginados de um endpoint específico até max_items.
         """
         all_data = []
-        cursor = None
+        current_params = params.copy()
         
+        # Ensure 'first' is set for pagination, capped at 100
+        current_params['first'] = min(current_params.get('first', 100), 100)
+
+        info(f"Iniciando busca paginada para endpoint '{endpoint}' com params: {current_params}, target: {max_items} items.")
+
         while True:
-            if cursor:
-                kwargs['after'] = cursor
-            
-            response_data = endpoint_method(**kwargs)
-            
-            if not response_data:
+            if len(all_data) >= max_items:
+                info(f"Atingido o limite de {max_items} itens. Coletados: {len(all_data)}.")
                 break
-                
-            all_data.extend(response_data)
+
+            response_json = self._make_request(endpoint, current_params)
             
-            # Verificar se há mais páginas (isso precisa ser implementado baseado na resposta)
-            # Por enquanto, vamos limitar para evitar loops infinitos
-            if len(response_data) < kwargs.get('first', 20):
+            data_batch = response_json.get('data', [])
+            if not data_batch:
+                info(f"Nenhum item retornado na página atual para {endpoint}. Finalizando paginacao.")
+                break
+            
+            all_data.extend(data_batch)
+            info(f"Coletados {len(data_batch)} itens. Total até agora: {len(all_data)} para {endpoint}.")
+
+            if len(all_data) >= max_items:
+                info(f"Total de itens coletados ({len(all_data)}) atingiu ou excedeu {max_items}. Cortando excesso se houver.")
+                all_data = all_data[:max_items] # Trim to max_items exactly
+                break
+
+            pagination = response_json.get('pagination', {})
+            cursor = pagination.get('cursor')
+
+            if cursor:
+                current_params['after'] = cursor
+                # 'first' remains as set initially for subsequent calls
+            else:
+                info(f"Nao ha mais cursor de paginacao para {endpoint}. Finalizando.")
                 break
         
-        info(f"Total de itens coletados: {len(all_data)}")
+        info(f"Busca paginada para {endpoint} concluída. Total de itens coletados: {len(all_data)}.")
         return all_data 
