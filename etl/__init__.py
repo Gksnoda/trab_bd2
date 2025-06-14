@@ -1,0 +1,1 @@
+# ETL para dados da API Twitch 

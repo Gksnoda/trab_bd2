@@ -2,8 +2,9 @@ import requests
 import os
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
-from logger import info, error
+from etl.utils.logger import info, error
 import time
+from datetime import datetime
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -225,3 +226,30 @@ class TwitchAPIClient:
         
         info(f"Busca paginada para {endpoint} concluída. Total de itens coletados: {len(all_data)}.")
         return all_data 
+
+    def get_videos_by_date_range(self, user_id: str, start_date: datetime, end_date: datetime, first: int = 20) -> List[Dict]:
+        """
+        Buscar vídeos de um usuário em um intervalo de datas específico
+        """
+        params = {
+            'user_id': user_id,
+            'first': first,
+            'created_at': f"{start_date.isoformat()}Z..{end_date.isoformat()}Z"
+        }
+        
+        try:
+            response = self._make_request('videos', params)
+            videos = response.get('data', [])
+            
+            # Filtrar vídeos que estão dentro do intervalo (dupla verificação)
+            filtered_videos = []
+            for video in videos:
+                if video.get('created_at'):
+                    video_date = datetime.fromisoformat(video['created_at'].replace('Z', '+00:00'))
+                    if start_date <= video_date <= end_date:
+                        filtered_videos.append(video)
+            
+            return filtered_videos
+        except Exception as e:
+            info(f"Erro ao buscar vídeos para usuário {user_id} no período {start_date} - {end_date}: {e}")
+            return [] 

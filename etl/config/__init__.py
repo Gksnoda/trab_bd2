@@ -1,0 +1,1 @@
+# Configurações do ETL Twitch 
