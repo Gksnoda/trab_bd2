@@ -1,1 +1,0 @@
-# Scripts de carga no banco de dados 

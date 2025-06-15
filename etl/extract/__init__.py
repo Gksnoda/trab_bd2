@@ -1,1 +1,0 @@
-# Scripts de extração da API Twitch 
