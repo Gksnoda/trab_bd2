@@ -1,6 +1,9 @@
 from django.urls import path
-from .views import builder
+from . import views
 
 urlpatterns = [
-    path('builder/', builder, name='ad_hoc_builder'),
+    path('builder/', views.builder, name='builder'),
+    path('export/excel/', views.export_excel, name='export_excel'),
+    path('export/csv/', views.export_csv, name='export_csv'),
+    path('export/json/', views.export_json, name='export_json'),
 ]

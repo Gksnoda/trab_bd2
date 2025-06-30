@@ -1,77 +1,247 @@
-{# reports/templates/reports/builder.html #}
-{% extends 'base.html' %}
-{% load report_extras %}
+{% extends 'base.html' %} {% load static %} {% load report_extras %} {% load humanize %}
+ {% block content %} 
 
-{% block content %}
-  <h1>Relatórios Ad-Hoc</h1>
+<link rel="stylesheet" href="{% static 'reports/css/style.css' %}" />
 
-  <form method="post">
-    {% csrf_token %}
 
-    <h3>Escolha tabelas</h3>
-    {% for t in tables %}
-      <label>
-        <input type="checkbox"
-               name="tables"
-               value="{{ t.table }}">
-        {{ t.name }}
-      </label><br>
-    {% endfor %}
+<div class="container">
+  <h1 class="titulo">
+  <a href="/reports/builder/" style="text-decoration: none; color: inherit;">
+    Twitch Analytics
+  </a>
+</h1>
 
-    <h3>Escolha campos</h3>
-    <select name="fields" multiple size="10">
-      {% for t in tables %}
-        <optgroup label="{{ t.name }}">
-          {% for fld in t.model|get_model_fields %}
-            <option value="{{ t.table }}__{{ fld }}">{{ fld }}</option>
-          {% endfor %}
-        </optgroup>
-      {% endfor %}
-    </select>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <form method="get">
+        {% csrf_token %}
 
-    <h3>Filtros</h3>
-    <div id="filters">
-      <div>
-        <select name="filters-field_0">
-          {% for t in tables %}
-            {% for fld in t.model|get_model_fields %}
-              <option value="{{ t.table }}__{{ fld }}">
-                {{ t.name }}.{{ fld }}
-              </option>
-            {% endfor %}
-          {% endfor %}
-        </select>
-        <select name="filters-op_0">
-          <option value="equals">=</option>
-          <option value="contains">Contém</option>
-          <!-- etc -->
-        </select>
-        <input name="filters-val_0">
-      </div>
-    </div>
-    <button type="button" onclick="addFilter()">+ filtro</button>
-    <button type="submit">Gerar relatório</button>
-  </form>
+        <!-- Busca Global -->
+        <section class="bloco-filtros">
+          <h2 class="titulo-secao">Busca Global</h2>
+          <div style="display: flex; gap: 10px">
+            {{ form.busca_global }}
+            <button type="submit" class="btn" style="margin: 0">Buscar</button>
+          </div>
+          <div class="quick-filters" style="margin-top: 10px">
+            <button type="submit" name="filter" value="top_streamers" class="botao-filtro">Top Streamers</button>
+            <button type="submit" name="filter" value="jogos_populares" class="botao-filtro">Jogos Populares</button>
+            <button type="submit" name="filter" value="brpt" class="botao-filtro">BR/PT</button>
+          </div>
+        </section>
 
-  {% if results %}
-    <h3>Resultados</h3>
-    <table>
-      <thead>
-        <tr>
-          {% for col in results.0.keys %}
-            <th>{{ col }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in results %}
-          <tr>
-            {% for val in row.values %}
+        <!-- Seleção de Tabelas -->
+        <section class="bloco-filtros">
+          <h2 class="titulo-secao">Seleção de Tabelas</h2>
+          <div class="campo-select">{{ form.tables }}</div>
+        </section>
+
+        <!-- Atributos & Colunas -->
+        <section class="bloco-filtros">
+          <h2 class="titulo-secao">Atributos e Colunas</h2>
+          <div class="columns">
+            <div class="botoes-atributos">
+              <button type="button" class="btn-secundario" onclick="selecionarTodos()">Selecionar Todos</button>
+              <button type="button" class="btn-secundario" onclick="limparSelecao()">Limpar Seleção</button>
+            </div>
+            <div class="campo-select">{{ form.fields }}</div>
+          </div>
+        </section>
+
+        <!-- Filtros Avançados -->
+        <section class="bloco-filtros">
+          <h2 class="titulo-secao">Filtros Avançados</h2>
+          <div class="tabs">
+            <button type="button" onclick="showTab('basico')">Básico</button>
+            <button type="button" onclick="showTab('avancado')">Avançado</button>
+          </div>
+
+          <div id="filtro-basico" class="filter-tab">
+            <div class="filter-row">
+              <div class="campo-filtro">
+                <label>Campo</label>
+                {{ form.filter_field }}
+              </div>
+              <div class="campo-filtro">
+                <label>Operador</label>
+                {{ form.filter_operator }}
+              </div>
+              <div class="campo-filtro">
+                <label>Valor</label>
+                {{ form.filter_value }}
+              </div>
+            </div>
+          </div>
+
+          <div id="filtro-avancado" class="filter-tab" style="display: none">
+            <div class="filter-row">
+              <label>Campo Mínimo</label>
+              <input type="number" name="min_value" class="input-text" placeholder="Valor mínimo" />
+              <label>Campo Máximo</label>
+              <input type="number" name="max_value" class="input-text" placeholder="Valor máximo" />
+            </div>
+            <div class="filter-row">
+              <label>Incluir Nulos?</label>
+              <select name="include_nulls" class="input-text">
+                <option value="">--</option>
+                <option value="yes">Sim</option>
+                <option value="no">Não</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Ordenação -->
+        <section class="bloco-filtros">
+          <h2 class="titulo-secao">Ordenação</h2>
+          <div class="ordenacao-container">
+            {{ form.order_field }} {{ form.order_type }}
+          </div>
+        </section>
+
+        <!-- Preview da Query -->
+        <section class="bloco-filtros">
+          <h2 class="titulo-secao">Preview da Query</h2>
+          <pre class="query-preview">{{ preview_query|default:"-- Selecione ao menos 1 tabela e 1 coluna para exibir o SQL" }}</pre>
+        </section>
+
+        <!-- Ações -->
+        <section class="bloco-filtros">
+          <div class="botoes-centrais">
+            <button type="submit" class="btn btn-relatorio">Gerar Relatório</button>
+            <button type="reset" class="btn btn-limpar">Limpar Filtros</button>
+          </div>
+        </section>
+      </form>
+    </aside>
+
+    <!-- Resultados -->
+    <main class="results">
+     <section class="metricas">
+  <div class="card">
+  <strong>{{ total_streamers|intcomma }}</strong><br />Total Streamers
+</div>
+<div class="card">
+  <strong>{{ total_views|floatformat:0|intcomma }}M</strong><br />Total Views
+</div>
+<div class="card">
+  <strong>{{ jogo_mais_popular }}</strong><br />Jogo Mais Popular
+</div>
+<div class="card">
+  <strong>{{ idioma_mais_falado }}</strong><br />Idioma Mais Falado
+</div>
+<div class="card">
+  <strong>
+    {% if data_ultima_stream %}
+      {{ data_ultima_stream|date:"d/m/Y H:i" }}
+    {% else %}
+      --
+    {% endif %}
+  </strong><br />Última Atualização
+</div>
+
+</section>
+
+
+     <section class="export">
+        <a class="export-btn" href="{% url 'export_excel' %}?{{ request.GET.urlencode }}">Excel</a>
+        <a class="export-btn" href="{% url 'export_csv' %}?{{ request.GET.urlencode }}">CSV</a>
+        <a class="export-btn" href="{% url 'export_json' %}?{{ request.GET.urlencode }}">JSON</a>
+        <button class="export-btn">Gráfico</button>
+    </section>
+
+
+      <section class="result-table">
+        <table>
+          <thead>
+            <tr>
+              {% if results %} {% for col in results.0.keys %}
+              <th>{{ col|col_label:column_labels }}</th>
+              {% endfor %} {% else %}
+              <th colspan="100%">Nenhum dado encontrado</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in results %}
+            <tr>
+              {% for val in row.values %}
               <td>{{ val }}</td>
+              {% endfor %}
+            </tr>
             {% endfor %}
-          </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Paginação -->
+      {% if results.has_other_pages %}
+      <div class="paginacao-numerada">
+        {% if results.has_previous %}
+          <a href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ results.previous_page_number }}" class="botao-paginacao">← Anterior</a>
+        {% endif %}
+
+        {% for num in results.paginator.page_range %}
+          {% if num > results.number|add:"-5" and num < results.number|add:"5" %}
+            {% if num == results.number %}
+              <span class="botao-paginacao ativo">{{ num }}</span>
+            {% else %}
+              <a href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ num }}" class="botao-paginacao">{{ num }}</a>
+            {% endif %}
+          {% endif %}
         {% endfor %}
-      </tbody>
-    </table>
-  {% endif %}
+
+        {% if results.has_next %}
+          <a href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ results.next_page_number }}" class="botao-paginacao">Próxima →</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </main>
+  </div>
+</div>
+
+<style>
+  .paginacao-numerada {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .botao-paginacao {
+    padding: 6px 12px;
+    border: 1px solid #aaa;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #333;
+  }
+  .botao-paginacao.ativo {
+    background-color: #a855f7;
+    color: white;
+    font-weight: bold;
+    border: 1px solid #a855f7;
+  }
+</style>
+
+<script>
+  function showTab(tabName) {
+    document.querySelectorAll(".filter-tab").forEach((tab) => tab.style.display = "none");
+    document.getElementById("filtro-" + tabName).style.display = "block";
+  }
+
+  function selecionarTodos() {
+    document.querySelectorAll('.campo-select input[type="checkbox"]').forEach((cb) => (cb.checked = true));
+  }
+
+  function limparSelecao() {
+    document.querySelectorAll('.campo-select input[type="checkbox"]').forEach((cb) => (cb.checked = false));
+  }
+
+  document.querySelectorAll('input[name="tables"]').forEach((cb) => {
+    cb.addEventListener("change", () => {
+      document.querySelector("form").submit();
+    });
+  });
+</script>
 {% endblock %}

@@ -6,6 +6,12 @@ from decouple import config
 # --------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+STATIC_URL = 'static/'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
 
 TEMPLATES = [
     {
@@ -47,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
 
     # seu app de relatórios ad-hoc
     'reports',
@@ -83,9 +90,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'HOST':   config('DB_HOST', default='localhost'),
         'PORT':   config('DB_PORT', default='5432'),
-        'NAME':   config('DB_NAME', default='twitch_analytics'),
+        'NAME':   config('DB_NAME', default='twitch_2'),
         'USER':   config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default=''),
+        'PASSWORD': config('DB_PASSWORD', default='postgres'),
     }
 }
 
@@ -125,7 +132,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # --------------------------------------------------
 # CREDENCIAIS DA TWITCH (opcionalmente disponíveis via settings)
 # --------------------------------------------------
-TWITCH_CLIENT_ID     = config('TWITCH_CLIENT_ID')
-TWITCH_CLIENT_SECRET = config('TWITCH_CLIENT_SECRET')
-TWITCH_REDIRECT_URI  = config('TWITCH_REDIRECT_URI')
-TWITCH_TOKEN         = config('TWITCH_TOKEN')
+TWITCH_CLIENT_ID     = config('TWITCH_CLIENT_ID', default='')
+TWITCH_CLIENT_SECRET = config('TWITCH_CLIENT_SECRET', default='')
+TWITCH_REDIRECT_URI  = config('TWITCH_REDIRECT_URI', default='')
+TWITCH_TOKEN         = config('TWITCH_TOKEN', default='')
