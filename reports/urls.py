@@ -1,10 +1,13 @@
 from django.urls import path
 from . import views
 
+from .views import grafico_dinamico_relatorio
+
 urlpatterns = [
     path('builder/', views.builder, name='builder'),
     path('export/<str:format>/', views.export_data, name='export_data'),
-    path('reports/chart/', views.top_streamers_chart, name='top_streamers_chart'),
-    path('reports/top_games_chart/', views.top_games_chart, name='top_games_chart'),
 
+    path('grafico_dinamico_relatorio/', grafico_dinamico_relatorio, name='grafico_dinamico_relatorio'),
 ]
+
+

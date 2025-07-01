@@ -130,8 +130,9 @@
   <a class="export-btn" href="{% url 'export_data' 'excel' %}?{{ request.GET.urlencode }}">Excel</a>
   <a class="export-btn" href="{% url 'export_data' 'csv' %}?{{ request.GET.urlencode }}">CSV</a>
   <a class="export-btn" href="{% url 'export_data' 'json' %}?{{ request.GET.urlencode }}">JSON</a>
-  <a class="export-btn" href="{% url 'top_streamers_chart' %}?{{ request.GET.urlencode }}" target="_blank">Gráfico 1</a>
-  <a class="export-btn" href="{% url 'top_games_chart' %}?{{ request.GET.urlencode }}" target="_blank">Gráfico 2</a>
+  <a href="#" id="btnGrafico" class="export-btn" class="btn">Gráfico</a>
+{% comment %} 
+  <a class="export-btn" href="{% url 'top_games_chart' %}?{{ request.GET.urlencode }}" target="_blank">Gráfico 2</a> {% endcomment %}
 </section>
 
 
@@ -189,7 +190,7 @@
         {% endif %}
       </div>
       {% endif %}
-      <div id="chart-container" style="margin-top: 2rem; text-align:center;"></div>
+      <div id="grafico-container" style="margin-top: 24px;"></div>
     </main>
   </div>
 </div>
@@ -240,14 +241,43 @@
     });
   });
 
-  document.getElementById('show-chart').onclick = function() {
-    document.getElementById('chart-container').innerHTML =
-      '<img src="{% url "top_streamers_chart" %}?v=' + Date.now() + '" alt="Gráfico" style="max-width:100%;border-radius:12px;box-shadow:0 2px 8px #0002;">';
-  };
+document.getElementById("btnGrafico").onclick = function(e) {
+    e.preventDefault(); // Isso é importante para não recarregar a página
+    let tabela = document.querySelector("table");
+    if (!tabela) {
+        alert("Nenhuma tabela encontrada!");
+        return;
+    }
+    let rows = tabela.querySelectorAll("tbody tr");
+    let cols = Array.from(tabela.querySelectorAll("thead th")).map(th => th.innerText.trim());
 
-  document.getElementById('show-chart2').onclick = function() {
-    document.getElementById('chart-container').innerHTML =
-      '<img src="{% url "top_games_chart" %}?v=' + Date.now() + '" alt="Gráfico 2" style="max-width:100%;border-radius:12px;box-shadow:0 2px 8px #0002;">';
-  };
+    let dataRows = [];
+    rows.forEach(tr => {
+        let rowData = {};
+        let tds = tr.querySelectorAll("td");
+        tds.forEach((td, idx) => {
+            rowData[cols[idx]] = td.innerText.trim();
+        });
+        dataRows.push(rowData);
+    });
+
+    fetch("{% url 'grafico_dinamico_relatorio' %}", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({columns: cols, rows: dataRows})
+    })
+    .then(resp => {
+        if (!resp.ok) throw new Error("Erro ao gerar gráfico!");
+        return resp.blob();
+    })
+    .then(blob => {
+        let url = URL.createObjectURL(blob);
+        document.getElementById("grafico-container").innerHTML = `<img src="${url}" style="max-width:100%;">`;
+    })
+    .catch(e => alert(e.message));
+};
 </script>
 {% endblock %}

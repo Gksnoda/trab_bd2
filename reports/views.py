@@ -6,12 +6,14 @@ from reports.models import User, Stream, Game, Video, Clip
 import csv
 import json
 import pandas as pd
-from django.http import HttpResponse
 import io
 import matplotlib
 matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 from io import BytesIO
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse, HttpResponse
+
 
 
 def get_tabelas_e_campos(selected_tables=None):
@@ -864,80 +866,39 @@ def export_data(request, format):
     else:
         return HttpResponse("Formato não suportado.", status=400)
 
+@csrf_exempt
+def grafico_dinamico_relatorio(request):
+    if request.method == "POST":
+        # Recebe os dados da tabela como JSON
+        dados = json.loads(request.body.decode('utf-8'))
 
-def top_streamers_chart(request):
-    # Query dos dados (top 10 streamers por views)
-    top_streamers = (
-        Stream.objects.values('user_id')
-        .annotate(total_views=Sum('viewer_count'))
-        .order_by('-total_views')[:10]
-    )
-    user_ids = [item['user_id'] for item in top_streamers]
-    users = User.objects.filter(id__in=user_ids)
-    users_dict = {u.id: u.display_name for u in users}
-    nomes = [users_dict.get(item['user_id'], f"ID {item['user_id']}") for item in top_streamers]
-    views = [item['total_views'] for item in top_streamers]
+        # Exemplo: tenta pegar as colunas automaticamente
+        colunas = dados["columns"]  # Exemplo: ['display_name', 'viewer_count']
+        linhas = dados["rows"]      # Lista de dicts com cada linha
 
-    # Gera o gráfico
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.barh(nomes, views, color="#8f46f7")
-    ax.set_xlabel("Visualizações")
-    ax.set_ylabel("Streamer")
-    ax.set_title("Top 10 Streamers Mais Vistos")
-    plt.gca().invert_yaxis()  # Streamer mais assistido em cima
+        # Aqui você escolhe qual gráfico faz sentido para o relatório (exemplo: barras)
+        x = [row[colunas[0]] for row in linhas]
+        y = []
+        # Procura coluna numérica
+        for c in colunas:
+            if c != colunas[0]:
+                try:
+                    y = [float(row[c]) if row[c] else 0 for row in linhas]
+                    break
+                except Exception:
+                    continue
 
-    buf = io.BytesIO()
-    plt.tight_layout()
-    plt.savefig(buf, format='png')
-    plt.close(fig)
-    buf.seek(0)
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.bar(x, y)
+        ax.set_xlabel(colunas[0])
+        ax.set_ylabel(colunas[1] if len(colunas) > 1 else "Valor")
+        ax.set_title("Gráfico Dinâmico do Relatório")
+        plt.tight_layout()
 
-    return HttpResponse(buf.getvalue(), content_type='image/png')
+        buf = BytesIO()
+        plt.savefig(buf, format="png")
+        plt.close(fig)
+        buf.seek(0)
+        return HttpResponse(buf, content_type='image/png')
 
-def top_games_chart(request):
-    # Query dos 10 jogos mais assistidos
-    top_games = (
-        Stream.objects.values('game__name')
-        .annotate(total_views=Sum('viewer_count'))
-        .order_by('-total_views')[:10]
-    )
-    nomes = [g['game__name'] for g in top_games]
-    views = [g['total_views'] for g in top_games]
-
-    plt.figure(figsize=(8,4))
-    plt.barh(nomes[::-1], views[::-1])
-    plt.xlabel('Visualizações')
-    plt.title('Top 10 Jogos Mais Assistidos')
-    plt.tight_layout()
-
-    buf = BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close()
-    buf.seek(0)
-    return HttpResponse(buf.read(), content_type='image/png')
-
-def top_games_chart(request):
-    # 1. Busca os top 10 jogos por soma de viewers
-    top_games = (
-        Stream.objects.values('game_id')
-        .annotate(total_views=Sum('viewer_count'))
-        .order_by('-total_views')[:10]
-    )
-    game_ids = [g['game_id'] for g in top_games]
-    games = Game.objects.in_bulk(game_ids)
-    labels = [games[gid].name if gid in games else "Desconhecido" for gid in game_ids]
-    values = [g['total_views'] for g in top_games]
-
-    # 2. Cria o gráfico de barras
-    fig, ax = plt.subplots(figsize=(9, 5))
-    ax.barh(labels[::-1], values[::-1], color='#9147ff')  # Inverte para o maior em cima
-    ax.set_xlabel("Visualizações")
-    ax.set_ylabel("Jogo")
-    ax.set_title("Top 10 Jogos Mais Assistidos")
-    plt.tight_layout()
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png")
-    plt.close(fig)
-    buf.seek(0)
-    return HttpResponse(buf, content_type='image/png')
+    return JsonResponse({"erro": "Só POST"}, status=405)
