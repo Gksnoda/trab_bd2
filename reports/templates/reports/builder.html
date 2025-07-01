@@ -1,4 +1,4 @@
-{% extends 'base.html' %} {% load static %} {% load report_extras %} {% load humanize %}
+{% extends 'base.html' %} {% load static %} {% load report_extras %} {% load get_item %} {% load humanize %}
  {% block content %} 
 
 <link rel="stylesheet" href="{% static 'reports/css/style.css' %}" />
@@ -53,9 +53,7 @@
         <section class="bloco-filtros">
           <h2 class="titulo-secao">Filtros Avançados</h2>
           <div class="tabs">
-            <button type="button" onclick="showTab('basico')">Básico</button>
-            <button type="button" onclick="showTab('avancado')">Avançado</button>
-          </div>
+      
 
           <div id="filtro-basico" class="filter-tab">
             <div class="filter-row">
@@ -74,22 +72,6 @@
             </div>
           </div>
 
-          <div id="filtro-avancado" class="filter-tab" style="display: none">
-            <div class="filter-row">
-              <label>Campo Mínimo</label>
-              <input type="number" name="min_value" class="input-text" placeholder="Valor mínimo" />
-              <label>Campo Máximo</label>
-              <input type="number" name="max_value" class="input-text" placeholder="Valor máximo" />
-            </div>
-            <div class="filter-row">
-              <label>Incluir Nulos?</label>
-              <select name="include_nulls" class="input-text">
-                <option value="">--</option>
-                <option value="yes">Sim</option>
-                <option value="no">Não</option>
-              </select>
-            </div>
-          </div>
         </section>
 
         <!-- Ordenação -->
@@ -133,11 +115,11 @@
 </div>
 <div class="card">
   <strong>
-    {% if data_ultima_stream %}
-      {{ data_ultima_stream|date:"d/m/Y H:i" }}
-    {% else %}
-      --
-    {% endif %}
+   {% if ultima_atualizacao %}
+  {{ ultima_atualizacao }}
+{% else %}
+  --
+{% endif %}
   </strong><br />Última Atualização
 </div>
 
@@ -145,35 +127,45 @@
 
 
      <section class="export">
-        <a class="export-btn" href="{% url 'export_excel' %}?{{ request.GET.urlencode }}">Excel</a>
-        <a class="export-btn" href="{% url 'export_csv' %}?{{ request.GET.urlencode }}">CSV</a>
-        <a class="export-btn" href="{% url 'export_json' %}?{{ request.GET.urlencode }}">JSON</a>
-        <button class="export-btn">Gráfico</button>
-    </section>
+  <a class="export-btn" href="{% url 'export_data' 'excel' %}?{{ request.GET.urlencode }}">Excel</a>
+  <a class="export-btn" href="{% url 'export_data' 'csv' %}?{{ request.GET.urlencode }}">CSV</a>
+  <a class="export-btn" href="{% url 'export_data' 'json' %}?{{ request.GET.urlencode }}">JSON</a>
+  <a class="export-btn" href="{% url 'top_streamers_chart' %}?{{ request.GET.urlencode }}" target="_blank">Gráfico 1</a>
+  <a class="export-btn" href="{% url 'top_games_chart' %}?{{ request.GET.urlencode }}" target="_blank">Gráfico 2</a>
+</section>
 
 
-      <section class="result-table">
-        <table>
-          <thead>
-            <tr>
-              {% if results %} {% for col in results.0.keys %}
-              <th>{{ col|col_label:column_labels }}</th>
-              {% endfor %} {% else %}
-              <th colspan="100%">Nenhum dado encontrado</th>
-              {% endif %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in results %}
-            <tr>
-              {% for val in row.values %}
-              <td>{{ val }}</td>
-              {% endfor %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </section>
+{% load get_item %}
+
+<section class="result-table">
+  <table>
+    <thead>
+      <tr>
+        {% if results %}
+          {% for key in results.0.keys %}
+            <th>
+              {{ column_labels|get_item:key|default:key }}
+            </th>
+          {% endfor %}
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in results %}
+        <tr>
+          {% for key in results.0.keys %}
+            <td>{{ row|get_item:key }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+
+
+
+
 
       <!-- Paginação -->
       {% if results.has_other_pages %}
@@ -197,9 +189,13 @@
         {% endif %}
       </div>
       {% endif %}
+      <div id="chart-container" style="margin-top: 2rem; text-align:center;"></div>
     </main>
   </div>
 </div>
+
+
+
 
 <style>
   .paginacao-numerada {
@@ -243,5 +239,15 @@
       document.querySelector("form").submit();
     });
   });
+
+  document.getElementById('show-chart').onclick = function() {
+    document.getElementById('chart-container').innerHTML =
+      '<img src="{% url "top_streamers_chart" %}?v=' + Date.now() + '" alt="Gráfico" style="max-width:100%;border-radius:12px;box-shadow:0 2px 8px #0002;">';
+  };
+
+  document.getElementById('show-chart2').onclick = function() {
+    document.getElementById('chart-container').innerHTML =
+      '<img src="{% url "top_games_chart" %}?v=' + Date.now() + '" alt="Gráfico 2" style="max-width:100%;border-radius:12px;box-shadow:0 2px 8px #0002;">';
+  };
 </script>
 {% endblock %}

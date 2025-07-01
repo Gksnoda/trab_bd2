@@ -3,7 +3,8 @@ from . import views
 
 urlpatterns = [
     path('builder/', views.builder, name='builder'),
-    path('export/excel/', views.export_excel, name='export_excel'),
-    path('export/csv/', views.export_csv, name='export_csv'),
-    path('export/json/', views.export_json, name='export_json'),
+    path('export/<str:format>/', views.export_data, name='export_data'),
+    path('reports/chart/', views.top_streamers_chart, name='top_streamers_chart'),
+    path('reports/top_games_chart/', views.top_games_chart, name='top_games_chart'),
+
 ]
