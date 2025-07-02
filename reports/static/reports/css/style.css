@@ -408,3 +408,13 @@ input[type="checkbox"].hidden-checkbox:checked + label.tabela-card {
 .export-btn:hover {
   background-color: #7e22ce !important;
 }
+
+.filter-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.campo-filtro {
+  flex: 1;
+}

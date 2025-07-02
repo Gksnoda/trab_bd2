@@ -12,7 +12,6 @@ class User(models.Model):
         managed = False
         db_table = 'users'
 
-
 class Game(models.Model):
     id = models.CharField(primary_key=True, max_length=100)
     name = models.CharField(max_length=200)
@@ -22,11 +21,10 @@ class Game(models.Model):
         managed = False
         db_table = 'games'
 
-
 class Stream(models.Model):
     id = models.CharField(primary_key=True, max_length=100)
-    user_id = models.CharField(max_length=100)  # chave estrangeira manual, para bater com o banco real
-    game_id = models.CharField(max_length=100, blank=True, null=True)
+    user = models.ForeignKey('User', on_delete=models.DO_NOTHING, db_column='user_id')
+    game = models.ForeignKey('Game', on_delete=models.DO_NOTHING, db_column='game_id', blank=True, null=True)
     title = models.TextField()
     viewer_count = models.IntegerField(default=0)
     started_at = models.DateTimeField()
@@ -38,11 +36,10 @@ class Stream(models.Model):
         managed = False
         db_table = 'streams'
 
-
 class Video(models.Model):
     id = models.CharField(primary_key=True, max_length=100)
-    stream_id = models.CharField(max_length=100, blank=True, null=True)
-    user_id = models.CharField(max_length=100)  # chave estrangeira manual
+    stream = models.ForeignKey('Stream', on_delete=models.DO_NOTHING, db_column='stream_id', blank=True, null=True)
+    user = models.ForeignKey('User', on_delete=models.DO_NOTHING, db_column='user_id')
     title = models.CharField(max_length=500)
     created_at = models.DateTimeField(null=True, blank=True)
     url = models.URLField(max_length=500)
@@ -54,13 +51,12 @@ class Video(models.Model):
         managed = False
         db_table = 'videos'
 
-
 class Clip(models.Model):
     id = models.CharField(primary_key=True, max_length=100)
     url = models.URLField(max_length=500)
-    user_id = models.CharField(max_length=100)  # chave estrangeira manual
-    video_id = models.CharField(max_length=100, blank=True, null=True)
-    game_id = models.CharField(max_length=100, blank=True, null=True)
+    user = models.ForeignKey('User', on_delete=models.DO_NOTHING, db_column='user_id')
+    video = models.ForeignKey('Video', on_delete=models.DO_NOTHING, db_column='video_id', blank=True, null=True)
+    game = models.ForeignKey('Game', on_delete=models.DO_NOTHING, db_column='game_id', blank=True, null=True)
     language = models.CharField(max_length=10)
     title = models.CharField(max_length=255)
     view_count = models.BigIntegerField(default=0)

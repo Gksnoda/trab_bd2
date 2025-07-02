@@ -50,29 +50,60 @@
         </section>
 
         <!-- Filtros Avançados -->
-        <section class="bloco-filtros">
-          <h2 class="titulo-secao">Filtros Avançados</h2>
-          <div class="tabs">
-      
+<section class="bloco-filtros">
+  <h2 class="titulo-secao">Filtros Avançados</h2>
+  <div class="tabs">
+    <div id="filtro-basico" class="filter-tab">
+      <div class="filter-row">
+        <div class="campo-filtro">
+          <label>Campo 1</label>
+          {{ form.filter_field1 }}
+        </div>
+        <div class="campo-filtro">
+          <label>Operador 1</label>
+          {{ form.filter_operator1 }}
+        </div>
+        <div class="campo-filtro">
+          <label>Valor 1</label>
+          {{ form.filter_value1 }}
+        </div>
+      </div>
+      <div class="campo-filtro" style="margin: 10px 0;">
+        <label>Operador Lógico</label>
+        {{ form.logical_operator }}
+      </div>
+      <div class="filter-row">
+        <div class="campo-filtro">
+          <label>Campo 2</label>
+          {{ form.filter_field2 }}
+        </div>
+        <div class="campo-filtro">
+          <label>Operador 2</label>
+          {{ form.filter_operator2 }}
+        </div>
+        <div class="campo-filtro">
+          <label>Valor 2</label>
+          {{ form.filter_value2 }}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-          <div id="filtro-basico" class="filter-tab">
-            <div class="filter-row">
-              <div class="campo-filtro">
-                <label>Campo</label>
-                {{ form.filter_field }}
-              </div>
-              <div class="campo-filtro">
-                <label>Operador</label>
-                {{ form.filter_operator }}
-              </div>
-              <div class="campo-filtro">
-                <label>Valor</label>
-                {{ form.filter_value }}
-              </div>
-            </div>
-          </div>
-
-        </section>
+<!-- Agregação -->
+<section class="bloco-filtros">
+  <h2 class="titulo-secao">Agregação</h2>
+  <div class="filter-row">
+    <div class="campo-filtro">
+      <label>Função de Agregação</label>
+      {{ form.aggregation_function }}
+    </div>
+    <div class="campo-filtro">
+      <label>Campo para Agregar</label>
+      {{ form.aggregation_field }}
+    </div>
+  </div>
+</section>
 
         <!-- Ordenação -->
         <section class="bloco-filtros">
@@ -226,6 +257,21 @@
     document.querySelectorAll(".filter-tab").forEach((tab) => tab.style.display = "none");
     document.getElementById("filtro-" + tabName).style.display = "block";
   }
+
+  document.querySelectorAll('.botao-filtro').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      // Monta a URL do builder, mantendo outros parâmetros se quiser
+      let url = new URL(window.location.href);
+      url.searchParams.set('filter', this.value);
+      // Limpa busca_global/filter_field/etc se quiser
+      url.searchParams.delete('busca_global');
+      url.searchParams.delete('filter_field');
+      url.searchParams.delete('filter_value');
+      url.searchParams.delete('filter_operator');
+      window.location.href = url.toString();
+  });
+});
 
   function selecionarTodos() {
     document.querySelectorAll('.campo-select input[type="checkbox"]').forEach((cb) => (cb.checked = true));
